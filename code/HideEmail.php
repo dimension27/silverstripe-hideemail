@@ -98,8 +98,6 @@ class HideEmail_Controller extends ContentController {
 
 class HideEmail {
 
-	public static $jsAdded = false;
-
 	static function obfuscateEmails( $content ) {
 		$search = array(
 				'/<a ([^>]*)href=([\'"])\s*mailto:\s*(\S+)@(\S+)([\'"])([^>]*)>([^>]*)<\/a>/siUe', // (\?[^\'"]*subject=([^&]+))?
@@ -114,12 +112,8 @@ class HideEmail {
 		);
 		$count = 0;
 		$content = preg_replace($search, $replace, $content, -1, $count);
-		if( $count > 0 && !self::$jsAdded ) {
-			$content =<<<EOB
-<script type="text/javascript">function deobfuscate(s) { var o = s[0], i, r = ''; for( i = 1; i < s.length; i++ ) { r += String.fromCharCode(s[i] - o); } return r; }</script>
-$content
-EOB;
-			self::$jsAdded = true;
+		if( $count > 0 ) {
+			Requirements::customScript('function deobfuscate(s) { var o = s[0], i, r = \'\'; for( i = 1; i < s.length; i++ ) { r += String.fromCharCode(s[i] - o); } return r; }', 'HideEmail_deobfuscate');
 		}
 		return $content;
 	}
@@ -142,15 +136,11 @@ EOB;
 
 }
 
-class HideEmail_SiteTreeDecorator extends SiteTreeDecorator {
+class HideEmail_ControllerDecorator extends Extension {
 
-	function Content() {
-		$content = $this->owner->getField('Content');
+	function getContent() {
+		$content = $this->owner->data()->Content;
 		return HideEmail::obfuscateEmails($content);
-	}
-
-	function onAfterPublish( $original ) {
-		HideEmail::$jsAdded = false;
 	}
 
 }
