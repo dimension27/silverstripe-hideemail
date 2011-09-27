@@ -12,6 +12,80 @@
  * @author Simon Wade <simon.wade@dimension27.com>
  */
 
+class HideEmail {
+
+	public static $functionIncluded = false;
+
+	static function obfuscateEmails( $content ) {
+		$search = array(
+				'/<a ([^>]*)href=([\'"])\s*mailto:\s*(\S+)@(\S+)([\'"])([^>]*)>([^>]*)<\/a>/siUe', // (\?[^\'"]*subject=([^&]+))?
+				'/[^"\'<>]+@[^"\'<>]+/e'
+		);
+		$replace = array(
+				'"<script>document.write(deobfuscate(".HideEmail::obfuscate("$0")."))</script>'."\n"
+						.'<noscript><a $1href=\"'.Director::baseURL()
+						.'mailto/$3/$4\"$6>".HideEmail::replaceEmails("$7")."</a></noscript>"',
+				'"<script>document.write(deobfuscate(".HideEmail::obfuscate("$0")."))</script>'
+						.'<noscript>".HideEmail::replaceEmails("$0")."</noscript>"'
+		);
+		$count = 0;
+		$content = preg_replace($search, $replace, $content, -1, $count);
+		if( $count > 0 && !self::$functionIncluded) {
+			Requirements::customScript('function deobfuscate(s) { var o = s[0], i, r = \'\'; for( i = 1; i < s.length; i++ ) { r += String.fromCharCode(s[i] - o); } return r; }', 'HideEmail_deobfuscate');
+		}
+		return $content;
+	}
+
+	static function obfuscate( $str ) {
+		$str = stripslashes($str);
+		$offset = rand(0, 9);
+		$rv = array($offset);
+		for( $i = 0; $i < strlen($str); $i++ ) {
+			$rv[] = ord($str[$i]) + $offset;
+		}
+		$rv = '['.implode(',', $rv).']';
+		return $rv;
+	}
+
+	static function replaceEmails( $str ) {
+		return preg_replace('/\S+\@\S+/', '[click to email]', $str);
+	}
+
+	private function __construct() {}
+
+}
+
+class HideEmail_ControllerDecorator extends Extension {
+
+	function getContent() {
+		$content = $this->owner->data()->Content;
+		return HideEmail::obfuscateEmails($content);
+	}
+
+	/**
+	 * Can be used to hide an email in your template:
+	 * $HideEmail(<a href='foo@bar.com'>email us</a>)
+	 * nb. You have to use single quotes to get around SilverStripe's template parser
+	 * @param string $str
+	 */
+	function HideEmail( $str ) {
+		return HideEmail::obfuscateEmails($str);
+	}
+
+}
+
+/**
+ * The DataObjectDecorator that adds $HideEmailLink functionality to the Member
+ * class.
+ */
+class HideEmail_MemberDecorator extends DataObjectDecorator {
+
+	function HideEmailLink() {
+		return "mailto/" . $this->owner->ID;
+	}
+
+}
+
 /**
  * Generates obfusticated links, and also holds the method called when /mailto/
  * is called via the URL. As noted above, take a look at the _config.php file to
@@ -94,65 +168,6 @@ class HideEmail_Controller extends ContentController {
 		parent::__construct($dataRecord);
 	}
 
-}
-
-class HideEmail {
-
-	static function obfuscateEmails( $content ) {
-		$search = array(
-				'/<a ([^>]*)href=([\'"])\s*mailto:\s*(\S+)@(\S+)([\'"])([^>]*)>([^>]*)<\/a>/siUe', // (\?[^\'"]*subject=([^&]+))?
-				'/[^"\'<>]+@[^"\'<>]+/e'
-		);
-		$replace = array(
-				'"<script>document.write(deobfuscate(".HideEmail::obfuscate("$0")."))</script>'."\n"
-						.'<noscript><a $1href=$2'.Director::baseURL()
-						.'mailto/$3/$4$5$6>".HideEmail::replaceEmails("$7")."</a></noscript>"',
-				'"<script>document.write(deobfuscate(".HideEmail::obfuscate("$0")."))</script>'
-						.'<noscript>".HideEmail::replaceEmails("$0")."</noscript>"'
-		);
-		$count = 0;
-		$content = preg_replace($search, $replace, $content, -1, $count);
-		if( $count > 0 ) {
-			Requirements::customScript('function deobfuscate(s) { var o = s[0], i, r = \'\'; for( i = 1; i < s.length; i++ ) { r += String.fromCharCode(s[i] - o); } return r; }', 'HideEmail_deobfuscate');
-		}
-		return $content;
-	}
-
-	static function obfuscate( $str ) {
-		$offset = rand(0, 9);
-		$rv = array($offset);
-		for( $i = 0; $i < strlen($str); $i++ ) {
-			$rv[] = ord($str[$i]) + $offset;
-		}
-		$rv = '['.implode(',', $rv).']';
-		return $rv;
-	}
-
-	static function replaceEmails( $str ) {
-		return preg_replace('/\S+\@\S+/', '[click to email]', $str);
-	}
-
-	private function __construct() {}
-
-}
-
-class HideEmail_ControllerDecorator extends Extension {
-
-	function getContent() {
-		$content = $this->owner->data()->Content;
-		return HideEmail::obfuscateEmails($content);
-	}
-
-}
-
-/**
- * The DataObjectDecorator that adds $HideEmailLink functionality to the Member
- * class.
- */
-class HideEmail_Role extends DataObjectDecorator {
-	function HideEmailLink() {
-		return "mailto/" . $this->owner->ID;
-	}
 }
 
 ?>

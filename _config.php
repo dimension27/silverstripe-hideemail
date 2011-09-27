@@ -13,7 +13,7 @@ HideEmail_Controller::set_allowed_domains('*');
  * on Member objects in the system (it does add some extra processing time to
  * viewing Member objects if you have these)
  */
-Object::add_extension('Member', 'HideEmail_Role');
+Object::add_extension('Member', 'HideEmail_MemberDecorator');
 
 /*
  * You can comment out/remove this line if you don't want to hide emails in content.
