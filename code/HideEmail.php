@@ -30,7 +30,7 @@ class HideEmail {
 		);
 		$count = 0;
 		$content = preg_replace($search, $replace, $content, -1, $count);
-		if( $count > 0 && !self::$functionIncluded) {
+		if( $count > 0 && !self::$functionIncluded ) {
 			Requirements::customScript('function deobfuscate(s) { var o = s[0], i, r = \'\'; for( i = 1; i < s.length; i++ ) { r += String.fromCharCode(s[i] - o); } return r; }', 'HideEmail_deobfuscate');
 		}
 		return $content;
